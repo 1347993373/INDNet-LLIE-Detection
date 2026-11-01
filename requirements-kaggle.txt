@@ -1,0 +1,24 @@
+# 依赖清单 —— Kaggle Notebooks 专用
+#
+# ⚠️ 千万不要在 Kaggle 上直接 pip install -r requirements.txt
+#    Kaggle 镜像已经预装了与 CUDA 匹配的 torch / torchvision，
+#    从 PyPI 重装会把 CUDA 版换成 CPU 版，GPU 就白开了。
+#
+# 本文件只包含 Kaggle 上需要补装的部分。
+
+# ---- 评价指标 ----
+lpips>=0.1.4
+
+# ---- 图像与数值（Kaggle 通常已有 numpy/opencv，写上无害）----
+scikit-image>=0.22.0
+opencv-python-headless>=4.8.0
+
+# ---- 工程 ----
+PyYAML>=6.0
+tqdm>=4.66.0
+einops>=0.7.0
+tensorboard>=2.15.0
+matplotlib>=3.8.0
+
+# ---- 下游检测实验（P3 的 Table 3 才需要，前期可以不装）----
+# ultralytics>=8.1.0

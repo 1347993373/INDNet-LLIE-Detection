@@ -1,0 +1,30 @@
+# INDNet 依赖清单
+# 建议在隔离虚拟环境中安装： python -m venv .venv
+
+# ---- 深度学习框架（请按本机 CUDA 版本从 pytorch.org 选择安装命令）----
+# CUDA 12.1 示例：
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+# 仅 CPU（不推荐用于训练）：
+#   pip install torch torchvision
+torch>=2.1.0
+torchvision>=0.16.0
+
+# ---- 数值与图像 ----
+numpy>=1.24
+opencv-python>=4.8.0
+Pillow>=10.0.0
+scikit-image>=0.22.0
+scipy>=1.11.0
+
+# ---- 评价指标 ----
+lpips>=0.1.4
+
+# ---- 工程 ----
+PyYAML>=6.0
+tqdm>=4.66.0
+einops>=0.7.0
+tensorboard>=2.15.0
+matplotlib>=3.8.0
+
+# ---- 下游检测应用（Table 3）----
+ultralytics>=8.1.0

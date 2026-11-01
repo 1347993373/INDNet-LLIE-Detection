@@ -1,0 +1,111 @@
+# INDNet 配置 —— Kaggle Notebooks 专用
+#
+# 与本地版 lol_v1.yaml 的唯一区别：路径指向 Kaggle 的挂载点。代码完全共用。
+#
+# 使用前提：
+#   1. 已手机验证 Kaggle 账号（否则拿不到 GPU 加速器）
+#   2. Notebook 的 Settings -> Accelerator 选 GPU T4 x2
+#   3. Add Input 挂载 soumikrakshit/lol-dataset 与 hongngnguyn/exdarkdataset
+#
+# 挂载后数据集位于 /kaggle/input/（只读），输出写到 /kaggle/working/。
+# 目录常会多一层嵌套，我们的数据集代码会递归自动识别，无需手动指到 our485 那一层。
+#
+# ============================================================================
+# 【训练预算的重大修正（2026-10-16）】
+#
+# 早期配置是 epochs: 200 × (485/16=30 iter) = **6000 次迭代**。
+# 而 Retinexformer 官方论文 Implementation Details 明确写的是：
+#     "trained ... for 2.5×10^5 iterations，patches 128×128，batch size 8，
+#      Adam 2e-4→1e-6 cosine，MAE 目标"
+# 也就是 **250,000 次迭代** —— 我们只跑了它的 2.4%。
+#
+# 这解释了为什么消融只有 18.3 dB（Retinexformer 25.16 dB）。
+# 现在改用 total_iter 表达训练预算，可以直接与文献配方对齐。
+#
+# 换算：patch 128 / batch 8 → 485//8 = 60 iter/epoch
+#       60000 iter ≈ 1000 epoch ≈ 2 小时（T4）   ← 当前默认（探测档）
+#       250000 iter ≈ 4167 epoch ≈ 6–8 小时（T4） ← 完整对齐 SOTA 配方
+#
+# 建议分两步：先用 60000 探测趋势，若 PSNR 明显上升再跑满 250000。
+# ============================================================================
+
+experiment:
+  name: INDNet_LOLv1
+  seed: 3407
+  output_dir: /kaggle/working/INDNet_LOLv1
+  note: "Kaggle T4；训练预算对齐 Retinexformer 配方"
+
+data:
+  name: LOLv1
+  # 指向挂载根即可，代码会自动向下找到 our485 / eval15
+  root: /kaggle/input/lol-dataset
+  train_low: our485/low
+  train_high: our485/high
+  test_low: eval15/low
+  test_high: eval15/high
+  patch_size: 128         # 对齐 Retinexformer 的 128×128
+  batch_size: 8           # 对齐 Retinexformer 的 batch size 8
+  num_workers: 2          # Kaggle 只给 4 核，不要设大
+  augment:
+    hflip: true
+    vflip: true
+    rot90: true           # 对齐 Retinexformer 的"随机旋转 + 翻转"
+                          # ⚠️ 早期版本这个配置被忽略了（实现写死 hflip+vflip），已修
+
+model:
+  name: INDNet
+  in_channels: 3
+  base_channels: 48       # v3：4 级 U-Net（48/96/192/288），约 8.3 M 参数
+  num_blocks: 6           # 主干 3 个残差块 + 膨胀卷积
+  illum_scale: 4          # 光照图在 1/4 分辨率估计再上采样 —— 结构上保证 L 是低频
+  illumination_branch: true
+  noise_branch: true
+
+train:
+  # ---- 训练预算：按总迭代数表达，可直接与文献配方对齐 ----
+  total_iter: 60000       # 探测档（≈2 小时）。对齐 SOTA 配方请改 250000
+  epochs: 200             # 仅在 total_iter=0 时生效（保留旧的按 epoch 训练方式）
+  lr: 2.0e-4              # 与 Retinexformer 一致：2e-4 → 1e-6 cosine
+  weight_decay: 1.0e-4
+  optimizer: adam
+  scheduler: cosine
+  grad_clip: 1.0
+  amp: true               # T4 用半精度明显提速
+  # 下面三项以「epoch」为单位；当前 60 iter/epoch
+  val_every: 20           # ≈1200 iter 验证一次（60000 iter 共 50 次）
+  save_every: 200         # ≈12000 iter 存一次快照。
+                          # 每个快照含模型+优化器状态约 15 MB；早期设 30 会产出 33 个
+                          # 快照（约 0.5 GB）并拖慢 Output 下载。best.pth 每次提升都会
+                          # 覆盖保存，所以放宽快照间隔是安全的。
+  log_every: 200          # 每 200 iter 打一行日志（60000 iter 共 300 行）
+  # epoch_log_every: 留空则按总 epoch 数自动取（约 60 行汇总），避免上千行日志
+
+loss:
+  w_rec: 1.0             # 主监督：最终输出对齐参考图
+  w_refl: 0.0            # v1/v2 遗留项（物理反演结果 R 也对齐参考图）。
+                         # v3 里 reflectance ≡ enhanced，再加这一项等于把主监督翻倍，故置 0。
+  w_recon_low: 1.0       # ★ v3 起这是**真实约束**：enhanced⊙L + N ≈ I_low。
+                         # v1/v2 里 R 由 (I−N)/L 反演而来，recon ≡ I 是恒等式，提供不了信号；
+                         # v3 的 enhanced 是主干独立预测的，这一项才真正把两个解耦分支
+                         # 绑进表示学习 —— 消融实验因此仍然有意义。
+  w_illum_smooth: 0.005  # v3.1：0.05 → 0.005。L 已在 1/4 分辨率估计，结构上就平滑，
+                         # 再加 0.05 的平滑项只会把它压成常数（实测 std 变成 0.0000）。
+  w_noise_consistency: 0.02
+  w_noise_l1: 0.02       # 噪声图幅度正则（v3.1 加；L 有了直接监督后可以放小）
+  # ★ v3.2：光照图的直接监督。只靠重构约束**管不住 L** ——
+  # N（3 通道自由图）实测会长到 0.35、把重构误差全吃掉，L 于是保持常数（std=0.0000），
+  # 光照分支实际失效，plus_illum 与 baseline_unet 的消融会完全重合。
+  # 目标 = 「低照度 / 正常光」的比值，再强模糊到 1/8 分辨率，只监督低频部分。
+  w_illum_sup: 1.0
+  illum_sup_blur: 8
+  w_perceptual: 0.0      # 关掉：Retinexformer 只用 MAE，且感知损失会略降 PSNR；
+                         # 还能避免联网下载 VGG 权重。需要 LPIPS 指标时在 test.py 里加 --lpips
+
+eval:
+  metrics: [psnr, ssim, lpips]
+  y_channel: false        # 【重要】与基线论文保持同一约定后再改
+                          # 已核实：Retinexformer 用 BasicSR calculate_psnr，
+                          # crop_border=0 且 test_y_channel=False → RGB 三通道，
+                          # 与我们的默认约定一致，可以直接比较。
+  save_images: true
+  save_dir: /kaggle/working/results/LOLv1

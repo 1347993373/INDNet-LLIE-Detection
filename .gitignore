@@ -1,0 +1,24 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ---- 数据与产物（体积大 / 有版权，不入库）----
+data/
+experiments/
+results/
+runs/
+*.pth
+*.pt
+*.tar.gz
+*.zip
+
+# ---- 临时脚本 ----
+patch_cell.py
+
+# ---- 系统 ----
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/

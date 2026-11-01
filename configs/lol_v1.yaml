@@ -1,0 +1,59 @@
+# INDNet 主实验配置 —— LOL-v1
+# 用法： python train.py --config configs/lol_v1.yaml
+
+experiment:
+  name: INDNet_LOLv1
+  seed: 3407
+  output_dir: experiments/INDNet_LOLv1
+  note: "光照-噪声解耦，LOL-v1 主实验"
+
+data:
+  name: LOLv1
+  root: data/LOLdataset
+  train_low: our485/low
+  train_high: our485/high
+  test_low: eval15/low
+  test_high: eval15/high
+  patch_size: 256
+  batch_size: 8          # 显存 6GB 用 4；12GB 可用 16
+  num_workers: 4
+  # 数据增强（低照度增强任务，仅用几何变换，不要用色彩抖动）
+  augment:
+    hflip: true
+    vflip: true
+    rot90: false
+
+model:
+  name: INDNet
+  in_channels: 3
+  base_channels: 32
+  num_blocks: 4
+  # 两个分支的开关，用于消融实验（Table 2）
+  illumination_branch: true
+  noise_branch: true
+
+train:
+  epochs: 200
+  lr: 2.0e-4
+  weight_decay: 1.0e-4
+  optimizer: adam
+  scheduler: cosine
+  grad_clip: 1.0
+  amp: true              # 半精度训练，省显存
+  val_every: 10          # 每 10 个 epoch 评测一次
+  save_every: 50
+
+loss:
+  # 各损失项权重，配合实验计划中的"损失权重敏感性"子表调参
+  w_rec: 1.0             # 主监督：最终输出对齐参考图
+  w_refl: 0.5            # 物理反演结果 R=(I−N)/L 也要对齐参考图，防止残差头绕过物理通路
+  w_recon_low: 0.0       # 物理反演下 recon ≡ I 是恒等式，无监督信号，置 0
+  w_illum_smooth: 0.1    # 光照平滑损失
+  w_noise_consistency: 0.05  # 噪声一致性损失
+  w_perceptual: 0.01     # 感知损失（可选）
+
+eval:
+  metrics: [psnr, ssim, lpips]
+  y_channel: false       # 【重要】与基线论文保持同一计算约定后再改
+  save_images: true
+  save_dir: results/INDNet/LOLv1

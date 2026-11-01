@@ -69,6 +69,9 @@ DARK_GAMMA = float(os.environ.get("COCO_DARK_GAMMA", "1.60"))
 DARK_NOISE = float(os.environ.get("COCO_DARK_NOISE", "0.045"))
 CAP = int(os.environ.get("COCO_ENH_MAX_SIDE", "1024"))
 FIDELITY = os.environ.get("COCO_FIDELITY", "1") == "1"
+# sanity 图每格宽度。360 时整图 720px 宽，在 8.4 cm 单栏下约 218 dpi；
+# 投稿要 300 dpi 就设 520（整图 1040px）。只影响这张示意图，不影响任何数字。
+SANITY_W = int(os.environ.get("COCO_SANITY_W", "360"))
 _psnr = None
 _ssim = None
 
@@ -729,7 +732,7 @@ def main() -> None:
         if samples:
             cols = ["original", "dark"]
             pick = next((c for c in ok_conds if c.startswith("dark_") and c != "dark"), None)
-            W, H = 360, 270
+            W, H = SANITY_W, int(round(SANITY_W * 0.75))
             canvas = Image.new("RGB", (W * len(cols), H * len(samples)), "white")
             dr = ImageDraw.Draw(canvas)
             for r, (stem, pair) in enumerate(samples):

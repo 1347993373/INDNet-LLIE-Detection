@@ -18,6 +18,14 @@ runs/
 # ---- 临时脚本 ----
 patch_cell.py
 
+# ---- 论文稿：录用后再公开 ----
+# 公开仓库里放未投稿的全文，等于自行发布预印本。多数期刊允许，
+# 但个别编辑会以此为由判定「已发表」。稳妥做法：先只放代码，
+# 录用后删掉下面三行再提交一次即可。
+docs/PAPER_DRAFT.md
+docs/PAPER_OUTLINE.md
+docs/STATEMENTS.md
+
 # ---- 系统 ----
 .DS_Store
 Thumbs.db

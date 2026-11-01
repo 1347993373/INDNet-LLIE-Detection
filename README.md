@@ -136,7 +136,8 @@ python docs/md_tables_to_tex.py    # Table 1–7, A1 → docs/TABLES.tex
 Datasets are **not** redistributed here; please obtain them from the sources above.
 
 Trained weights (`baseline_unet`, `plus_illum`, `full_indnet`) and the COCO/ExDark result files are
-archived on Zenodo: **DOI 【to be inserted on acceptance】**.
+archived on Zenodo: **https://doi.org/10.5281/zenodo.23857840** — the concept DOI, which always
+resolves to the latest version (the v1.0.0 snapshot is `10.5281/zenodo.23857841`).
 
 ---
 
@@ -154,12 +155,22 @@ archived on Zenodo: **DOI 【to be inserted on acceptance】**.
 ## Citation
 
 ```bibtex
-@article{indnet2026beyondpsnr,
+@article{du2026beyondpsnr,
   title   = {Beyond PSNR: A Two-Dataset Analysis of Low-Light Image Enhancement
              for Object Detection},
-  author  = {【authors】},
+  author  = {Du, Jinfeng},
   journal = {Multimedia Tools and Applications},
-  year    = {2026}
+  year    = {2026},
+  note    = {Code and data: \url{https://doi.org/10.5281/zenodo.23857840}}
+}
+
+@software{du2026indnetcode,
+  author  = {Du, Jinfeng},
+  title   = {Code for "Beyond PSNR: A Two-Dataset Analysis of Low-Light Image
+             Enhancement for Object Detection"},
+  year    = {2026},
+  doi     = {10.5281/zenodo.23857840},
+  url     = {https://github.com/1347993373/INDNet-LLIE-Detection}
 }
 ```
 
